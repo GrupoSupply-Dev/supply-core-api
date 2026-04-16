@@ -141,3 +141,7 @@ vite.config.ts.timestamp-*
 /generated/prisma
 
 .cursor/commands/
+
+# Local media uploads (keep folder in repo via .gitkeep)
+/uploads/*
+!/uploads/.gitkeep

@@ -23,6 +23,8 @@ async function bootstrap() {
     .setVersion('1.0.0')
     .addTag('categories', 'Catalog categories (create before products)')
     .addTag('products', 'Products and volume pricing')
+    .addTag('discounts', 'Volume-aware price quotes')
+    .addTag('media', 'Image uploads (local disk; pluggable storage)')
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
