@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import {
   IsArray,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsPositive,
   IsString,
@@ -16,12 +17,14 @@ import { CreateVolumeDiscountDto } from './create-volume-discount.dto';
 
 export class CreateProductDto {
   @ApiProperty({ example: 'Corporate Laptop' })
+  @IsNotEmpty()
   @IsString()
   @MinLength(3)
   @MaxLength(120)
   name!: string;
 
   @ApiProperty({ example: 'SKU-LAP-001' })
+  @IsNotEmpty()
   @IsString()
   @MinLength(1)
   @MaxLength(64)
@@ -34,6 +37,7 @@ export class CreateProductDto {
   description?: string;
 
   @ApiProperty({ example: 2499.99 })
+  @IsNotEmpty()
   @Type(() => Number)
   @IsPositive()
   basePrice!: number;
@@ -56,6 +60,7 @@ export class CreateProductDto {
     description:
       'Must reference an existing category (see GET /categories). Invalid ids return 400.',
   })
+  @IsNotEmpty()
   @IsUUID('4')
   categoryId!: string;
 

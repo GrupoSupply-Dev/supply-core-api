@@ -1,16 +1,22 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { DiscountsService } from './discounts.service';
 import { PriceQuoteDto } from './dto/price-quote.dto';
 import { PriceQuoteResponseEntity } from './entities/price-quote-response.entity';
 
 @ApiTags('discounts')
+@ApiBearerAuth('JWT-auth')
+@ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+@ApiForbiddenResponse({ description: 'Not an admin' })
 @Controller('discounts')
 export class DiscountsController {
   constructor(private readonly discountsService: DiscountsService) {}

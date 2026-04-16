@@ -12,16 +12,22 @@ import type { Express } from 'express';
 import { memoryStorage } from 'multer';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiBody,
   ApiConsumes,
   ApiCreatedResponse,
+  ApiForbiddenResponse,
   ApiOperation,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { MediaService } from './media.service';
 import { UploadedImageEntity } from './entities/uploaded-image.entity';
 
 @ApiTags('media')
+@ApiBearerAuth('JWT-auth')
+@ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+@ApiForbiddenResponse({ description: 'Not an admin' })
 @Controller('media')
 export class MediaController {
   constructor(private readonly mediaService: MediaService) {}

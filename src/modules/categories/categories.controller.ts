@@ -12,13 +12,16 @@ import {
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
+  ApiForbiddenResponse,
   ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -26,6 +29,9 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 import { CategoryEntity } from './entities/category.entity';
 
 @ApiTags('categories')
+@ApiBearerAuth('JWT-auth')
+@ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
+@ApiForbiddenResponse({ description: 'Not an admin' })
 @Controller('categories')
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
