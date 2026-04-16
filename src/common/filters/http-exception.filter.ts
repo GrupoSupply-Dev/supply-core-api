@@ -22,7 +22,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();
+    const request = ctx.getRequest<Request & { requestId?: string }>();
     const path = request.url;
 
     if (exception instanceof HttpException) {
@@ -32,7 +32,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
         typeof body === 'string'
           ? { statusCode: status, message: body, path }
           : { ...(body as object), path };
-      response.status(status).json(payload);
+      response.status(status).json(this.withRequestId(request, payload));
       return;
     }
 
@@ -41,31 +41,45 @@ export class HttpExceptionFilter implements ExceptionFilter {
       this.logger.warn(
         `${request.method} ${path} -> ${status} [Prisma ${exception.code}]`,
       );
-      response.status(status).json(body);
+      response.status(status).json(this.withRequestId(request, body));
       return;
     }
 
     if (exception instanceof Prisma.PrismaClientValidationError) {
       this.logger.warn(`${request.method} ${path} -> 400 [Prisma validation]`);
-      response.status(HttpStatus.BAD_REQUEST).json({
-        statusCode: HttpStatus.BAD_REQUEST,
-        error: 'Bad Request',
-        message:
-          'The request could not be translated into a valid database operation.',
-        path,
-      });
+      response.status(HttpStatus.BAD_REQUEST).json(
+        this.withRequestId(request, {
+          statusCode: HttpStatus.BAD_REQUEST,
+          error: 'Bad Request',
+          message:
+            'The request could not be translated into a valid database operation.',
+          path,
+        }),
+      );
       return;
     }
 
     this.logger.error(
       exception instanceof Error ? exception.stack : String(exception),
     );
-    response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
-      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-      error: 'Internal Server Error',
-      message: 'An unexpected error occurred.',
-      path,
-    });
+    response.status(HttpStatus.INTERNAL_SERVER_ERROR).json(
+      this.withRequestId(request, {
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        error: 'Internal Server Error',
+        message: 'An unexpected error occurred.',
+        path,
+      }),
+    );
+  }
+
+  private withRequestId(
+    request: Request & { requestId?: string },
+    payload: Record<string, unknown>,
+  ): Record<string, unknown> {
+    if (request.requestId) {
+      return { ...payload, requestId: request.requestId };
+    }
+    return payload;
   }
 
   private mapPrismaKnownRequest(

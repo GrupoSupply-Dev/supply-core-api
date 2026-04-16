@@ -6,17 +6,19 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiResponse,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { ApiJwtAdminErrorDocs } from '../../common/swagger/admin-api.decorators';
+import { ErrorResponseDto } from '../../common/swagger/error-response.dto';
 import { DiscountsService } from './discounts.service';
 import { PriceQuoteDto } from './dto/price-quote.dto';
 import { PriceQuoteResponseEntity } from './entities/price-quote-response.entity';
 
 @ApiTags('discounts')
 @ApiBearerAuth('JWT-auth')
-@ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
-@ApiForbiddenResponse({ description: 'Not an admin' })
+@ApiJwtAdminErrorDocs()
 @Controller('discounts')
 export class DiscountsController {
   constructor(private readonly discountsService: DiscountsService) {}
@@ -27,9 +29,19 @@ export class DiscountsController {
     description:
       'Uses the highest applicable discountRate among tiers where quantity >= minQuantity.',
   })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT', type: ErrorResponseDto })
+  @ApiForbiddenResponse({ description: 'JWT without admin role', type: ErrorResponseDto })
   @ApiOkResponse({ type: PriceQuoteResponseEntity })
-  @ApiBadRequestResponse({ description: 'Invalid body or validation error' })
-  @ApiNotFoundResponse({ description: 'Unknown productId' })
+  @ApiResponse({ status: 200, description: 'OK', type: PriceQuoteResponseEntity })
+  @ApiBadRequestResponse({ description: 'Invalid body or validation error', type: ErrorResponseDto })
+  @ApiResponse({ status: 400, description: 'Bad request', type: ErrorResponseDto })
+  @ApiNotFoundResponse({ description: 'Unknown productId', type: ErrorResponseDto })
+  @ApiResponse({ status: 404, description: 'Not found', type: ErrorResponseDto })
+  @ApiResponse({
+    status: 500,
+    description: 'Unexpected server error',
+    type: ErrorResponseDto,
+  })
   quote(@Body() dto: PriceQuoteDto): Promise<PriceQuoteResponseEntity> {
     return this.discountsService.quotePrice(dto);
   }

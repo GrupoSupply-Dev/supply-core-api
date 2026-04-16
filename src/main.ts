@@ -32,6 +32,7 @@ async function bootstrap() {
       },
       'JWT-auth',
     )
+    .addTag('app', 'Root / health-style endpoint')
     .addTag('auth', 'JWT login')
     .addTag('categories', 'Catalog categories (create before products)')
     .addTag('products', 'Products and volume pricing')

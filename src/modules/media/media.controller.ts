@@ -18,16 +18,19 @@ import {
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiOperation,
+  ApiPayloadTooLargeResponse,
+  ApiResponse,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { ApiJwtAdminErrorDocs } from '../../common/swagger/admin-api.decorators';
+import { ErrorResponseDto } from '../../common/swagger/error-response.dto';
 import { MediaService } from './media.service';
 import { UploadedImageEntity } from './entities/uploaded-image.entity';
 
 @ApiTags('media')
 @ApiBearerAuth('JWT-auth')
-@ApiUnauthorizedResponse({ description: 'Missing or invalid JWT' })
-@ApiForbiddenResponse({ description: 'Not an admin' })
+@ApiJwtAdminErrorDocs()
 @Controller('media')
 export class MediaController {
   constructor(private readonly mediaService: MediaService) {}
@@ -47,9 +50,24 @@ export class MediaController {
       },
     },
   })
-  @ApiCreatedResponse({ type: UploadedImageEntity })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT', type: ErrorResponseDto })
+  @ApiForbiddenResponse({ description: 'JWT without admin role', type: ErrorResponseDto })
+  @ApiCreatedResponse({ type: UploadedImageEntity, description: 'File stored under /uploads' })
+  @ApiResponse({ status: 201, description: 'Created', type: UploadedImageEntity })
   @ApiBadRequestResponse({
-    description: 'Missing file, wrong type, or file too large (max 5MB)',
+    description: 'Missing file, unsupported type, or empty buffer',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Bad request', type: ErrorResponseDto })
+  @ApiPayloadTooLargeResponse({
+    description: 'File exceeds 5 MB (Multer limit)',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({ status: 413, description: 'Payload too large', type: ErrorResponseDto })
+  @ApiResponse({
+    status: 500,
+    description: 'Unexpected server error',
+    type: ErrorResponseDto,
   })
   @UseInterceptors(
     FileInterceptor('file', {
