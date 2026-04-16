@@ -48,40 +48,28 @@ export class ProductsService {
       });
     }
 
-    try {
-      const created = await this.prisma.product.create({
-        data: {
-          name: dto.name,
-          sku: dto.sku,
-          description: dto.description,
-          basePrice: dto.basePrice,
-          stock: dto.stock ?? 0,
-          imageUrl: dto.imageUrl,
-          categoryId: dto.categoryId,
-          volumeDiscounts:
-            tiers.length > 0
-              ? {
-                  create: tiers.map((t) => ({
-                    minQuantity: t.minQuantity,
-                    discountRate: t.discountRate,
-                  })),
-                }
-              : undefined,
-        },
-        include: productInclude,
-      });
-      return this.mapToEntity(created);
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        throw new BadRequestException(
-          'A product with this SKU already exists (or duplicate volume tier).',
-        );
-      }
-      throw error;
-    }
+    const created = await this.prisma.product.create({
+      data: {
+        name: dto.name,
+        sku: dto.sku,
+        description: dto.description,
+        basePrice: dto.basePrice,
+        stock: dto.stock ?? 0,
+        imageUrl: dto.imageUrl,
+        categoryId: dto.categoryId,
+        volumeDiscounts:
+          tiers.length > 0
+            ? {
+                create: tiers.map((t) => ({
+                  minQuantity: t.minQuantity,
+                  discountRate: t.discountRate,
+                })),
+              }
+            : undefined,
+      },
+      include: productInclude,
+    });
+    return this.mapToEntity(created);
   }
 
   private mapToEntity(row: ProductWithRelations): ProductEntity {

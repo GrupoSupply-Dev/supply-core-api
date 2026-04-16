@@ -4,6 +4,12 @@ const prisma = new PrismaClient();
 
 const SEED_SKU_PREFIX = 'SEED-';
 
+/** Tiers: qty 1–11 → base price; 12–49 → −5%; 50+ → −10% (highest applicable tier wins at runtime). */
+const STANDARD_VOLUME_TIERS = [
+  { minQuantity: 12, discountRate: 0.05 },
+  { minQuantity: 50, discountRate: 0.1 },
+] as const;
+
 async function main(): Promise<void> {
   await prisma.product.deleteMany({
     where: { sku: { startsWith: SEED_SKU_PREFIX } },
@@ -14,14 +20,14 @@ async function main(): Promise<void> {
     create: { name: 'Válvulas' },
     update: {},
   });
+  const connections = await prisma.category.upsert({
+    where: { name: 'Conexiones' },
+    create: { name: 'Conexiones' },
+    update: {},
+  });
   const pipes = await prisma.category.upsert({
     where: { name: 'Tuberías' },
     create: { name: 'Tuberías' },
-    update: {},
-  });
-  const fittings = await prisma.category.upsert({
-    where: { name: 'Accesorios' },
-    create: { name: 'Accesorios' },
     update: {},
   });
 
@@ -33,13 +39,7 @@ async function main(): Promise<void> {
       basePrice: 420.0,
       stock: 80,
       categoryId: valves.id,
-      volumeDiscounts: {
-        create: [
-          { minQuantity: 5, discountRate: 0.03 },
-          { minQuantity: 15, discountRate: 0.07 },
-          { minQuantity: 40, discountRate: 0.12 },
-        ],
-      },
+      volumeDiscounts: { create: [...STANDARD_VOLUME_TIERS] },
     },
   });
 
@@ -51,12 +51,7 @@ async function main(): Promise<void> {
       basePrice: 48.5,
       stock: 200,
       categoryId: valves.id,
-      volumeDiscounts: {
-        create: [
-          { minQuantity: 10, discountRate: 0.05 },
-          { minQuantity: 50, discountRate: 0.1 },
-        ],
-      },
+      volumeDiscounts: { create: [...STANDARD_VOLUME_TIERS] },
     },
   });
 
@@ -68,51 +63,37 @@ async function main(): Promise<void> {
       basePrice: 62.0,
       stock: 350,
       categoryId: pipes.id,
-      volumeDiscounts: {
-        create: [
-          { minQuantity: 20, discountRate: 0.04 },
-          { minQuantity: 100, discountRate: 0.09 },
-        ],
-      },
+      volumeDiscounts: { create: [...STANDARD_VOLUME_TIERS] },
     },
   });
 
   await prisma.product.create({
     data: {
-      name: 'Codo PVC 90° 63 mm',
-      sku: `${SEED_SKU_PREFIX}FIT-ELB-63`,
-      description: 'Encolar, presión PN10.',
-      basePrice: 3.2,
-      stock: 1200,
-      categoryId: fittings.id,
-      volumeDiscounts: {
-        create: [
-          { minQuantity: 50, discountRate: 0.06 },
-          { minQuantity: 200, discountRate: 0.12 },
-          { minQuantity: 500, discountRate: 0.18 },
-        ],
-      },
+      name: 'Te PVC 90° 63 mm',
+      sku: `${SEED_SKU_PREFIX}CONN-TE-63`,
+      description: 'Derivación encolar, PN10.',
+      basePrice: 5.4,
+      stock: 900,
+      categoryId: connections.id,
+      volumeDiscounts: { create: [...STANDARD_VOLUME_TIERS] },
     },
   });
 
   await prisma.product.create({
     data: {
       name: 'Unión americana hierro galvanizado 2"',
-      sku: `${SEED_SKU_PREFIX}FIT-UNI-2`,
+      sku: `${SEED_SKU_PREFIX}CONN-UNI-2`,
       description: 'Rosca NPT, incluye juntas.',
       basePrice: 18.75,
       stock: 260,
-      categoryId: fittings.id,
-      volumeDiscounts: {
-        create: [
-          { minQuantity: 8, discountRate: 0.025 },
-          { minQuantity: 24, discountRate: 0.055 },
-        ],
-      },
+      categoryId: connections.id,
+      volumeDiscounts: { create: [...STANDARD_VOLUME_TIERS] },
     },
   });
 
-  console.log('Seed completed: 3 categories (upsert) and 5 products with volume discounts.');
+  console.log(
+    'Seed completed: categories Válvulas, Conexiones, Tuberías; 5 products with volume tiers (12+ → 5%, 50+ → 10%).',
+  );
 }
 
 main()

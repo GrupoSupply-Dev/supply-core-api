@@ -1,10 +1,8 @@
 import {
   BadRequestException,
-  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -30,22 +28,10 @@ export class CategoriesService {
   }
 
   async create(dto: CreateCategoryDto): Promise<CategoryEntity> {
-    try {
-      const row = await this.prisma.category.create({
-        data: { name: dto.name.trim() },
-      });
-      return this.mapToEntity(row);
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        throw new ConflictException(
-          `A category named "${dto.name.trim()}" already exists. Use another name or update the existing category.`,
-        );
-      }
-      throw error;
-    }
+    const row = await this.prisma.category.create({
+      data: { name: dto.name.trim() },
+    });
+    return this.mapToEntity(row);
   }
 
   async update(id: string, dto: UpdateCategoryDto): Promise<CategoryEntity> {
@@ -55,40 +41,16 @@ export class CategoriesService {
         'Provide at least one field to update (e.g. name).',
       );
     }
-    try {
-      const row = await this.prisma.category.update({
-        where: { id },
-        data: { name: dto.name.trim() },
-      });
-      return this.mapToEntity(row);
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        throw new ConflictException(
-          `A category named "${dto.name!.trim()}" already exists.`,
-        );
-      }
-      throw error;
-    }
+    const row = await this.prisma.category.update({
+      where: { id },
+      data: { name: dto.name.trim() },
+    });
+    return this.mapToEntity(row);
   }
 
   async remove(id: string): Promise<void> {
     await this.findOne(id);
-    try {
-      await this.prisma.category.delete({ where: { id } });
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2003'
-      ) {
-        throw new BadRequestException(
-          `Cannot delete category "${id}" because one or more products still reference it. Reassign or delete those products first.`,
-        );
-      }
-      throw error;
-    }
+    await this.prisma.category.delete({ where: { id } });
   }
 
   private mapToEntity(row: {
