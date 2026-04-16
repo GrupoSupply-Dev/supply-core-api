@@ -1,5 +1,7 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import type { Express } from 'express';
+import { IMAGE_STORAGE, ImageStoragePort } from '../media/interfaces/image-storage.port';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { ProductEntity } from './entities/product.entity';
@@ -15,7 +17,11 @@ type ProductWithRelations = Prisma.ProductGetPayload<{
 
 @Injectable()
 export class ProductsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(IMAGE_STORAGE)
+    private readonly imageStorage: ImageStoragePort,
+  ) {}
 
   async findAll(): Promise<ProductEntity[]> {
     const rows = await this.prisma.product.findMany({
@@ -70,6 +76,27 @@ export class ProductsService {
       include: productInclude,
     });
     return this.mapToEntity(created);
+  }
+
+  async uploadProductImage(
+    productId: string,
+    file: Express.Multer.File,
+  ): Promise<ProductEntity> {
+    const existing = await this.prisma.product.findUnique({
+      where: { id: productId },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Product with id "${productId}" was not found.`);
+    }
+
+    const stored = await this.imageStorage.saveUploadedImage(file);
+
+    const updated = await this.prisma.product.update({
+      where: { id: productId },
+      data: { imageUrl: stored.publicUrl },
+      include: productInclude,
+    });
+    return this.mapToEntity(updated);
   }
 
   private mapToEntity(row: ProductWithRelations): ProductEntity {

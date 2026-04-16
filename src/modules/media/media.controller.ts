@@ -27,6 +27,10 @@ import { ApiJwtAdminErrorDocs } from '../../common/swagger/admin-api.decorators'
 import { ErrorResponseDto } from '../../common/swagger/error-response.dto';
 import { MediaService } from './media.service';
 import { UploadedImageEntity } from './entities/uploaded-image.entity';
+import {
+  LOCAL_UPLOAD_MAX_BYTES,
+  localImageMulterFileFilter,
+} from './storage/local-storage.service';
 
 @ApiTags('media')
 @ApiBearerAuth('JWT-auth')
@@ -72,7 +76,8 @@ export class MediaController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
-      limits: { fileSize: 5 * 1024 * 1024 },
+      limits: { fileSize: LOCAL_UPLOAD_MAX_BYTES },
+      fileFilter: localImageMulterFileFilter,
     }),
   )
   async uploadImage(
