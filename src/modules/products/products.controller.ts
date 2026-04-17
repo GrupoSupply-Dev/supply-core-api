@@ -8,6 +8,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -37,6 +38,8 @@ import {
 } from '../media/storage/local-storage.service';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
+import { ListProductsQueryDto } from './dto/list-products-query.dto';
+import { PaginatedProductsEntity } from './entities/paginated-products.entity';
 import { ProductEntity } from './entities/product.entity';
 
 @ApiTags('products')
@@ -46,25 +49,45 @@ export class ProductsController {
 
   @Public()
   @Get()
-  @ApiOperation({ summary: 'List all products (with category and volume discounts)' })
-  @ApiOkResponse({
-    type: ProductEntity,
-    isArray: true,
-    description: 'Public catalog listing',
+  @ApiOperation({
+    summary: 'List products (paginated catalog)',
+    description:
+      'Search matches product name, SKU, description, and category name (case-insensitive). Sort is stable (secondary key: id).',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'OK',
-    type: ProductEntity,
-    isArray: true,
+  @ApiOkResponse({
+    type: PaginatedProductsEntity,
+    description: 'Paginated list; each item matches GET /products/:id shape',
   })
   @ApiResponse({
     status: 500,
     description: 'Unexpected server error',
     type: ErrorResponseDto,
   })
-  findAll(): Promise<ProductEntity[]> {
-    return this.productsService.findAll();
+  findAll(@Query() query: ListProductsQueryDto): Promise<PaginatedProductsEntity> {
+    return this.productsService.findPaginated(query);
+  }
+
+  @Public()
+  @Get(':id')
+  @ApiOperation({
+    summary: 'Get one product by id',
+    description: 'Same Product payload as list rows (category, volumeDiscounts, stock, imageUrl).',
+  })
+  @ApiOkResponse({ type: ProductEntity })
+  @ApiBadRequestResponse({
+    description: '`id` is not a valid UUID v4',
+    type: ErrorResponseDto,
+  })
+  @ApiNotFoundResponse({ description: 'Product id not found', type: ErrorResponseDto })
+  @ApiResponse({
+    status: 500,
+    description: 'Unexpected server error',
+    type: ErrorResponseDto,
+  })
+  findOne(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ): Promise<ProductEntity> {
+    return this.productsService.findOneById(id);
   }
 
   @Post(':id/image')

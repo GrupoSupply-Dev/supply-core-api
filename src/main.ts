@@ -5,11 +5,20 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { AppModule } from './app.module';
 
+function buildCorsOrigins(): string[] {
+  const fromEnv = (process.env.FRONTEND_ORIGINS ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const defaults = ['http://localhost:3001', 'http://127.0.0.1:3001'];
+  return [...new Set([...fromEnv, ...defaults])];
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: ['http://localhost:3001', 'http://127.0.0.1:3001'],
+    origin: buildCorsOrigins(),
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
@@ -44,6 +53,7 @@ async function bootstrap() {
     .addTag('categories', 'Catalog categories (create before products)')
     .addTag('products', 'Products and volume pricing')
     .addTag('discounts', 'Volume-aware price quotes')
+    .addTag('orders', 'Checkout / order intake')
     .addTag('media', 'Image uploads (local disk; pluggable storage)')
     .build();
 

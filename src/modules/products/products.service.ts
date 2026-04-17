@@ -4,6 +4,8 @@ import type { Express } from 'express';
 import { IMAGE_STORAGE, ImageStoragePort } from '../media/interfaces/image-storage.port';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
+import { ListProductsQueryDto, type ProductListSort } from './dto/list-products-query.dto';
+import { PaginatedProductsEntity } from './entities/paginated-products.entity';
 import { ProductEntity } from './entities/product.entity';
 
 const productInclude = {
@@ -15,6 +17,28 @@ type ProductWithRelations = Prisma.ProductGetPayload<{
   include: typeof productInclude;
 }>;
 
+function listOrderBy(sort: ProductListSort | undefined): Prisma.ProductOrderByWithRelationInput[] {
+  const key = sort ?? 'createdAt_desc';
+  switch (key) {
+    case 'createdAt_asc':
+      return [{ createdAt: 'asc' }, { id: 'asc' }];
+    case 'name_asc':
+      return [{ name: 'asc' }, { id: 'asc' }];
+    case 'name_desc':
+      return [{ name: 'desc' }, { id: 'asc' }];
+    case 'basePrice_asc':
+      return [{ basePrice: 'asc' }, { id: 'asc' }];
+    case 'basePrice_desc':
+      return [{ basePrice: 'desc' }, { id: 'asc' }];
+    case 'createdAt_desc':
+      return [{ createdAt: 'desc' }, { id: 'asc' }];
+    default: {
+      const _exhaustive: never = key;
+      return _exhaustive;
+    }
+  }
+}
+
 @Injectable()
 export class ProductsService {
   constructor(
@@ -23,12 +47,58 @@ export class ProductsService {
     private readonly imageStorage: ImageStoragePort,
   ) {}
 
-  async findAll(): Promise<ProductEntity[]> {
-    const rows = await this.prisma.product.findMany({
+  async findPaginated(query: ListProductsQueryDto): Promise<PaginatedProductsEntity> {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 20;
+    const sort = query.sort ?? 'createdAt_desc';
+    const where: Prisma.ProductWhereInput = {};
+    if (query.categoryId) {
+      where.categoryId = query.categoryId;
+    }
+    if (query.search?.trim()) {
+      const term = query.search.trim();
+      where.OR = [
+        { name: { contains: term, mode: 'insensitive' } },
+        { sku: { contains: term, mode: 'insensitive' } },
+        { description: { contains: term, mode: 'insensitive' } },
+        { category: { name: { contains: term, mode: 'insensitive' } } },
+      ];
+    }
+
+    const [total, rows] = await this.prisma.$transaction([
+      this.prisma.product.count({ where }),
+      this.prisma.product.findMany({
+        where,
+        include: productInclude,
+        orderBy: listOrderBy(sort),
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+    ]);
+
+    const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
+
+    return {
+      data: rows.map((row) => this.mapToEntity(row)),
+      meta: {
+        page,
+        pageSize,
+        total,
+        totalPages,
+        sort,
+      },
+    };
+  }
+
+  async findOneById(id: string): Promise<ProductEntity> {
+    const row = await this.prisma.product.findUnique({
+      where: { id },
       include: productInclude,
-      orderBy: { createdAt: 'desc' },
     });
-    return rows.map((row) => this.mapToEntity(row));
+    if (!row) {
+      throw new NotFoundException(`Product with id "${id}" was not found.`);
+    }
+    return this.mapToEntity(row);
   }
 
   async create(dto: CreateProductDto): Promise<ProductEntity> {
